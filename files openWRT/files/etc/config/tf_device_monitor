@@ -1,0 +1,7 @@
+config tf_device_monitor
+    option enabled 1
+
+config sysDevName sysDevName
+    list if_name 'lan'
+    list dev_name 'switch'
+
