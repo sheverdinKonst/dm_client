@@ -1,0 +1,34 @@
+root@tfortis:~# ubus call system info
+{
+"localtime": 1696435675,
+"uptime": 18479,
+"load": [
+5248,
+1600,
+352
+],
+"memory": {
+"total": 124497920,
+"free": 77189120,
+"shared": 348160,
+"buffered": 0,
+"available": 60764160,
+"cached": 15589376
+},
+"root": {
+"total": 5184,
+"free": 4760,
+"used": 424,
+"avail": 4760
+},
+"tmp": {
+"total": 60788,
+"free": 60448,
+"used": 340,
+"avail": 60448
+},
+"swap": {
+"total": 0,
+"free": 0
+}
+}

@@ -1,0 +1,18 @@
+{
+"kernel": "5.15.127",
+"hostname": "tfortis",
+"system": "RTL8380",
+"model": "PSW-2G8F+",
+"location": "Treti stolb za povorotom",
+"board_name": "tfortis,psw-ng",
+"rootfs_type": "squashfs",
+"release": {
+"distribution": "OpenWrt",
+"version": "12.34.56.78",
+"revision": "r23392-e658eee813",
+"target": "realtek/rtl838x",
+"description": "OpenWrt 23.05-SNAPSHOT r23392-e658eee813"
+}
+}
+
+glpat-_y7Yfj3Q4Eq1Ku_3as6h
