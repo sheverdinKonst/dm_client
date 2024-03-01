@@ -25,7 +25,7 @@ function main_getNetDeviceInfo()
     local jsonData = tf.collectJsonTable(cmd_getDeviceInfo)
     if type(jsonData.values) == "table" then
         for k,value in pairs(jsonData.values[arg[1]]) do
-            io.write(value)
+            print(value)
         end
     else
         print("")

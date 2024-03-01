@@ -76,10 +76,9 @@ static error_code_t client_handler(void)
             net_socketInit();
             client_registerEvent_fillmsg(&getDeviceInfo);
             client_registerEvent_fillmsg(&getNETinfo);
-            client_registerEvent_fillmsg(&getSystemInfo);
+            client_registerEvent_fillmsg(&getTimeInfo);
             client_registerEvent_fillmsg(&getBoardInfo);
-            client_registerEvent_fillmsg(&getUCInfo);
-            client_registerEvent_fillmsg(&getGateway);
+            client_registerEvent_fillmsg(&getSystemInfo);
             clientInfo.state = CLIENT_STATE_WAIT;
         }
         break;
@@ -120,11 +119,12 @@ static error_code_t client_handler(void)
 
         case CLIENT_STATE_FILL_MSG:
         {
-
+            syslog(LOG_INFO, "CLIENT_STATE_FILL_MSG");
             client_emitEvent_fillmsg();
             searchOutMsg.struct1.msg_type = (uint8_t) ack_find_device;
             if (clientInfo.event & CLIENT_EVENT_MSG_READY)
             {
+                syslog(LOG_INFO, "dm CLIENT_EVENT_MSG_READY");
                 clientInfo.event &= (~CLIENT_EVENT_MSG_READY);
                 client_registerEvent_sendmsg(client_sendSearchMsg);
                 clientInfo.state = CLIENT_STATE_SEND;
@@ -213,10 +213,21 @@ static  error_code_t client_sendSettMsg(void)
 
 static  error_code_t client_sendSearchMsg(void)
 {
+    openlog("dm_Buffer", LOG_PID, LOG_USER);
+    syslog(LOG_INFO, "Read buffer address 1");
+
     uint8_t *bufferAddres = getBufferAddress();
+    syslog(LOG_INFO, "Read buffer address 2");
     memcpy(bufferAddres, searchOutMsg.buff, sizeof(searchOutMsg.buff));
+
+    syslog(LOG_INFO, "Read buffer address 2");
     int error = net_sendMsg();
-    mainTest(&searchOutMsg);
+
+    closelog();
+    //if (mainTestFlag)
+    {
+        mainTest(&searchOutMsg);
+    }
     return error;
 }
 
@@ -367,10 +378,16 @@ static error_code_t client_emitEvent_fillmsg(void)
         {
             eventFillMsg_CallbackArray[clientInfo.count](&searchOutMsg);
         }
+        openlog("dm_Fill_MSG", LOG_PID, LOG_USER);
+        syslog(LOG_INFO, "Count: %d", clientInfo.count);
+        closelog();
         clientInfo.count++;
     }
     else if (clientInfo.count >= CMD_MAX)
     {
+        openlog("dm_Fill_MSG", LOG_PID, LOG_USER);
+        syslog(LOG_INFO, "count >= CMD_MAX: ");
+        closelog();
         clientInfo.event |= CLIENT_EVENT_MSG_READY;
     }
     return OK;
@@ -435,67 +452,59 @@ static error_code_t client_unRegisterEvent_sendmsg(void)
 
 static void mainTest(search_out_msg_t *searchMsg)
 {
-    if (mainTestFlag)
+    printf("##   DEVICE TYPE: %d\n", searchMsg->struct1.dev_type);
+    printf("##   IP: \t");
+    for (int i = 0; i < IPV4_LEN; i++)
     {
-        printf("##   DEVICE TYPE: %d\n", searchMsg->struct1.dev_type);
-
-        printf("##   IP: \t");
-        for (int i = 0; i < IPV4_LEN; i++)
-        {
-            printf("%d", searchMsg->struct1.ip[i]);
-            printf(" ");
-        }
-        printf("\n");
-
-        printf("##   MAC: \t");
-        for (int i = 0; i < MAC_LEN; i++)
-        {
-            printf("%d", searchMsg->struct1.mac[i]);
-            printf(" ");
-        }
-        printf("\n");
-
-        printf("##   DESCRIPTION: \n");
-        printf("-> %s\n", searchMsg->struct1.dev_descr);
-
-
-        printf("##   LOCATION: \n");
-        printf("-> %s\n", searchMsg->struct1.dev_loc);
-
-        printf("##   UP_TIME: \t");
-        uint32_t uptime = 0;
-        printf(" %x ", searchMsg->struct1.uptime[3]);
-        printf(" %x ", searchMsg->struct1.uptime[2]);
-        printf(" %x ", searchMsg->struct1.uptime[1]);
-        printf(" %x \t", searchMsg->struct1.uptime[0]);
-
-        uptime |= (searchMsg->struct1.uptime[3] & 0xFFFFFFFF) << 8 * 3;
-        uptime |= (searchMsg->struct1.uptime[2] & 0xFFFFFFFF) << 8 * 2;
-        uptime |= (searchMsg->struct1.uptime[1] & 0xFFFFFFFF) << 8 * 1;
-        uptime |= (searchMsg->struct1.uptime[0] & 0xFFFFFFFF);
-        printf(" = %d\n", uptime);
-
-
-        printf("##   FIRMWARE VERSION: \t");
-        printf(" %d %d %d\n", searchMsg->struct1.firmware[0], searchMsg->struct1.firmware[1],
-               searchMsg->struct1.firmware[2]);
-
-        printf("##  MASK: \t");
-        for (int i = 0; i < IPV4_LEN; i++)
-        {
-            printf("%d", searchMsg->struct1.mask[i]);
-            printf(" ");
-        }
-        printf("\n");
-
-        printf("##   GATEWAY: \t");
-        for (int i = 0; i < IPV4_LEN; i++)
-        {
-            printf("%d", searchMsg->struct1.gate[i]);
-            printf(" ");
-        }
-        printf("\n");
+        printf("%d", searchMsg->struct1.ip[i]);
+        printf(" ");
     }
+    printf("\n");
+
+    printf("##   MAC: \t");
+    for (int i = 0; i < MAC_LEN; i++)
+    {
+        printf("%d", searchMsg->struct1.mac[i]);
+        printf(" ");
+    }
+    printf("\n");
+    printf("##   DESCRIPTION: \n");
+    printf("-> %s\n", searchMsg->struct1.dev_descr);
+    printf("##   LOCATION: \n");
+    printf("-> %s\n", searchMsg->struct1.dev_loc);
+    printf("##   UP_TIME: \t");
+
+    uint32_t uptime = 0;
+    printf(" %x ", searchMsg->struct1.uptime[3]);
+    printf(" %x ", searchMsg->struct1.uptime[2]);
+    printf(" %x ", searchMsg->struct1.uptime[1]);
+    printf(" %x \t", searchMsg->struct1.uptime[0]);
+
+    uptime |= (searchMsg->struct1.uptime[3] & 0xFFFFFFFF) << 8 * 3;
+    uptime |= (searchMsg->struct1.uptime[2] & 0xFFFFFFFF) << 8 * 2;
+    uptime |= (searchMsg->struct1.uptime[1] & 0xFFFFFFFF) << 8 * 1;
+    uptime |= (searchMsg->struct1.uptime[0] & 0xFFFFFFFF);
+    printf(" = %d\n", uptime);
+
+    printf("##   FIRMWARE VERSION: \t");
+    printf(" %d %d %d\n", searchMsg->struct1.firmware[0], searchMsg->struct1.firmware[1],
+           searchMsg->struct1.firmware[2]);
+
+    printf("##  MASK: \t");
+    for (int i = 0; i < IPV4_LEN; i++)
+    {
+        printf("%d", searchMsg->struct1.mask[i]);
+        printf(" ");
+    }
+    printf("\n");
+
+    printf("##   GATEWAY: \t");
+    for (int i = 0; i < IPV4_LEN; i++)
+    {
+        printf("%d", searchMsg->struct1.gate[i]);
+        printf(" ");
+    }
+    printf("\n");
 }
 
 void getMainBuff(uint8_t *mainBuff)

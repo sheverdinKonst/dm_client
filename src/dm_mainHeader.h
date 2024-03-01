@@ -150,11 +150,10 @@ typedef enum
     CMD_NET_INFO_MASK        = 4,
     CMD_NET_INFO_MAC         = 5,
     CMD_NET_INFO_GATE_WAY    = 6,
-    CMD_SYS_INFO             = 7,
+    CMD_TIME_INFO            = 7,
     CMD_BOARD_INFO           = 8,
-    CMD_UCI_SYS              = 9,
-    CMD_GATE                 = 10,
-    CMD_MAX                  = 11
+    CMD_SYSTEM_INFO          = 9,
+    CMD_MAX                  = 10
 }cmd_type_e;
 
 #endif //DM_CLIENT_DM_MAINHEADER_H

@@ -2,7 +2,7 @@
 #include "state_handler.h"
 #include "settings_module.h"
 
-#define VERSION ("2.1.22")
+#define VERSION ("2.1.35")
 
 int main(int argc, char **argv)
 {

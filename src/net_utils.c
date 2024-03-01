@@ -103,7 +103,7 @@ uint8_t *getBufferAddress(void)
 
 void getBuffer(uint8_t *settingsBuffer, uint32_t index)
 {
-    if(bufferLen>0)
+    if(bufferLen > 0)
     {
         memcpy(settingsBuffer, buffer+index, bufferLen-index);
     }
@@ -118,7 +118,8 @@ uint8_t net_sendMsg(void)
 {
     int broadcastEnable = 1;
     struct sockaddr_in client_addr_1;
-
+    openlog("dm_socket_test", LOG_PID , LOG_USER);
+    syslog(LOG_INFO, "socket");
     int sockSend_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockSend_fd < 0)
     {
@@ -136,6 +137,7 @@ uint8_t net_sendMsg(void)
     //}
 
     //if (setsockopt(sockSend_fd, SOL_SOCKET, SO_BROADCAST|SO_DONTROUTE|SO_ERROR, &broadcastEnable, sizeof(broadcastEnable)) < 0)
+    syslog(LOG_INFO, "setsockopt 1");
     if (setsockopt(sockSend_fd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0)
     {
         openlog("dm_socket", LOG_PID | LOG_PERROR, LOG_USER);
@@ -143,18 +145,29 @@ uint8_t net_sendMsg(void)
         closelog();
         return ERR_NETWORK;
     }
-    char * devName = "";
+    syslog(LOG_INFO, "getDeviceName");
+
+    uint8_t devNameLen = 0;
+    syslog(LOG_INFO, "getDeviceName - %d", devNameLen);
+    getDeviceNameLen(&devNameLen);
+    char *devName = NULL;
+    devName = (char*) malloc(devNameLen);
+
     getDeviceName(devName);
     openlog("dm_TEST", LOG_PID , LOG_USER);
     syslog(LOG_ERR, "DEV name create socket  = %s", devName);
     closelog();
 
+    syslog(LOG_INFO, "setsockopt 2");
     int rc = setsockopt(sockSend_fd, SOL_SOCKET, SO_BINDTODEVICE, devName, strlen(devName)-1);
     if (rc<0)
     {
         syslog(LOG_ERR,"SO_BINDTODEVICE error RC = %d", rc);
     }
 
+    free(devName);
+
+    syslog(LOG_INFO, "CONNECTION");
     memset(&client_addr_1, 0, sizeof(client_addr_1));
     client_addr_1.sin_family = AF_INET;
     client_addr_1.sin_port = htons(PORT);
@@ -162,10 +175,7 @@ uint8_t net_sendMsg(void)
     
     openlog("dm_socket", LOG_PID | LOG_PERROR, LOG_USER);
     ssize_t sendSize = 0;
-    syslog(LOG_ERR,"buffer len = %zu", bufferLen-1);
     sendSize = sendto(sockSend_fd, buffer, bufferLen-1, 0, (struct sockaddr *)&client_addr_1, sizeof(client_addr_1));
-
-    syslog(LOG_ERR, "Send massage = %zu", sendSize);
     closelog();
 
     if (sendSize < 0)

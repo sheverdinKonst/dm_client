@@ -35,17 +35,16 @@ CONFIG_PARAM_t configParam;
 
 const char CommandTable[CMD_MAX][COMMAND_LEN] =
 {
-    {"/etc/tf_device_monitor_scripts/getNetDeviceInfo.lua if_name"},
-    {"/etc/tf_device_monitor_scripts/getNetDeviceInfo.lua dev_name"},
-    {"/etc/tf_device_monitor_scripts/getMngtDevice.lua"},
-    {"/etc/tf_device_monitor_scripts/getNetData.lua ipaddr"},
-    {"/etc/tf_device_monitor_scripts/getNetData.lua netmask"},
-    {"/etc/tf_device_monitor_scripts/getNetData.lua macaddr"},
-    {"/etc/tf_device_monitor_scripts/getNetData.lua gateWay"},
-    {"ubus call system info"},
-    {"/etc/tf_device_monitor_scripts/get_model_info.lua"},
-    {"uci show system"},
-    {"ip r"}
+    {"/etc/tf_device_monitor_scripts/getNetDeviceInfo.lua if_name"},   // 0
+    {"/etc/tf_device_monitor_scripts/getNetDeviceInfo.lua dev_name"},  // 1
+    {"/etc/tf_device_monitor_scripts/getMngtDevice.lua"},              // 2
+    {"/etc/tf_device_monitor_scripts/getNetData.lua ipaddr"},          // 3
+    {"/etc/tf_device_monitor_scripts/getNetData.lua netmask"},         // 4
+    {"/etc/tf_device_monitor_scripts/getNetData.lua macaddr"},         // 5
+    {"/etc/tf_device_monitor_scripts/getNetData.lua gateWay"},         // 6
+    {"etc/tf_device_monitor_scripts/getUptime.lua"},                   // 7
+    {"/etc/tf_device_monitor_scripts/getBoardInfo.lua"},               // 8
+    {"/etc/tf_device_monitor_scripts/getSystemInfo.lua"},              // 9
 };
 
 /// ===============================================================
@@ -172,18 +171,17 @@ static void getIpaddr(search_out_msg_t *msg)
     snprintf(cmd, sizeof(cmd), "%s %s",  CommandTable[CMD_NET_INFO_IP], configParam.ifName);
 
     FILE *pipe = openPipe(cmd);
-    while (fgets(output, OUTPUT_MAX_LENGTH, pipe) != NULL)
+    for (int i = 0; i < IPV4_LEN; i++)
     {
-        syslog(LOG_INFO, "param %s   %s",logMsg, output);
+        fgets(output, OUTPUT_MAX_LENGTH, pipe);
+        syslog(LOG_INFO, "param %s %s",logMsg, output);
         long ipBit = 0;
-        for (int i = 0; i < IPV4_LEN; i++) {
-            ipBit = strtol(output, NULL, 10);
-            if (ipBit > 0 & ipBit < 256 ) {
-                msg->struct1.ip[i] = ipBit;
-            }
-            else {
-                syslog(LOG_INFO, "Wrong Ip bit %ld ", ipBit);
-            }
+        ipBit = strtol(output, NULL, 10);
+        if (ipBit >= 0 & ipBit < 256) {
+            msg->struct1.ip[i] = ipBit;
+        }
+        else {
+            syslog(LOG_INFO, "Wrong Ip bit %ld ", ipBit);
         }
     }
     closelog();
@@ -200,18 +198,18 @@ static void getMacaddr(search_out_msg_t *msg)
     snprintf(cmd, sizeof(cmd), "%s %s",  CommandTable[CMD_NET_INFO_MAC], configParam.deviceName);
 
     FILE *pipe = openPipe(cmd);
-    while (fgets(output, OUTPUT_MAX_LENGTH, pipe) != NULL)
+    for (int i = 0; i < MAC_LEN; i++)
     {
-        syslog(LOG_INFO, "logMgs: %s    %s", logMsg, output);
+        fgets(output, OUTPUT_MAX_LENGTH, pipe);
         long macBit = 0;
-        for (int i = 0; i < MAC_LEN; i++) {
-            macBit = strtol(output, NULL, 16);
-            if (macBit > 0 & macBit < 256 ) {
-                msg->struct1.mac[i] = macBit;
-            }
-            else {
-                syslog(LOG_INFO, "Wrong mac bit %ld ", macBit);
-            }
+        macBit = strtol(output, NULL, 16);
+        syslog(LOG_INFO, "logMgs: %s %s %ld", logMsg, output, macBit);
+        if (macBit >= 0 & macBit < 256)
+        {
+            msg->struct1.mac[i] = macBit;
+        } else
+        {
+            syslog(LOG_INFO, "Wrong mac bit %ld ", macBit);
         }
     }
     closelog();
@@ -228,21 +226,18 @@ static void getMask(search_out_msg_t *msg)
     snprintf(cmd, sizeof(cmd), "%s %s",  CommandTable[CMD_NET_INFO_MASK], configParam.ifName);
 
     FILE *pipe = openPipe(cmd);
-    while (fgets(output, OUTPUT_MAX_LENGTH, pipe) != NULL)
-    {
-        syslog(LOG_INFO, "logMgs: %s    %s", logMsg, output);
+    for (int i = 0; i < IPV4_LEN; i++) {
+        fgets(output, OUTPUT_MAX_LENGTH, pipe);
         long ipBit = 0;
-        for (int i = 0; i < IPV4_LEN; i++) {
-            ipBit = strtol(output, NULL, 10);
-            if (ipBit > 0 & ipBit < 256 ) {
-                msg->struct1.ip[i] = ipBit;
-            }
-            else {
-                syslog(LOG_INFO, "Wrong Ip bit %ld ", ipBit);
-            }
+        ipBit = strtol(output, NULL, 10);
+        syslog(LOG_INFO, "logMgs: %s %s %ld", logMsg, output, ipBit);
+        if (ipBit >= 0 & ipBit < 256 ) {
+            msg->struct1.mask[i] = ipBit;
+        }
+        else {
+            syslog(LOG_INFO, "Wrong Ip bit %ld ", ipBit);
         }
     }
-
     closelog();
     closePipe(pipe);
 }
@@ -257,45 +252,49 @@ static void geGateWay(search_out_msg_t *msg)
     snprintf(cmd, sizeof(cmd), "%s %s",  CommandTable[CMD_NET_INFO_GATE_WAY], configParam.mngtDevice);
 
     FILE *pipe = openPipe(cmd);
-    while (fgets(output, OUTPUT_MAX_LENGTH, pipe) != NULL)
+    long ipBit = 0;
+    for (int i = 0; i < IPV4_LEN; i++)
     {
-        syslog(LOG_INFO, "logMgs: %s %s", logMsg, output);
-        long ipBit = 0;
-        for (int i = 0; i < IPV4_LEN; i++) {
-            ipBit = strtol(output, NULL, 10);
-            if (ipBit > 0 & ipBit < 256 ) {
-                msg->struct1.ip[i] = ipBit;
-            }
-            else {
-                syslog(LOG_INFO, "Wrong Ip bit %ld ", ipBit);
-            }
+        fgets(output, OUTPUT_MAX_LENGTH, pipe);
+        ipBit = strtol(output, NULL, 10);
+        syslog(LOG_INFO, "logMgs: %s %s %ld", logMsg, output, ipBit);
+        if (ipBit >= 0 & ipBit < 256 ) {
+            msg->struct1.gate[i] = ipBit;
+        }
+        else {
+            syslog(LOG_INFO, "Wrong Ip bit %ld ", ipBit);
         }
     }
-
     closelog();
     closePipe(pipe);
 }
 
-int getSystemInfo(search_out_msg_t *searchOutMsg)
+int getTimeInfo(search_out_msg_t *searchOutMsg)
 {
-    splited_line_t splitLineSystem;
-
-    char uptime[] = "uptime";
     char output[OUTPUT_MAX_LENGTH];
     uint8_t  uptimeFlag = 0;
-    FILE *pipe = openPipe(CommandTable[CMD_SYS_INFO]);
+    FILE *pipe = openPipe(CommandTable[CMD_TIME_INFO]);
+    uint8_t lineCount = 0;
     while (fgets(output, OUTPUT_MAX_LENGTH, pipe))
     {
-        if (strstr(output, uptime) != NULL)
+        uptimeFlag = 1;
+        lineCount ++;
+        if (lineCount == 1)
         {
-            uptimeFlag = 1;
-            replaceSymbols(output, ',', ' ');
-            split_line(output, delimSpace, &splitLineSystem);
-            uint32_t  d_uptime = strtol(splitLineSystem.tokens[1], NULL, 10);
-            searchOutMsg->struct1.uptime[0] = (d_uptime)&(0xFF);
-            searchOutMsg->struct1.uptime[1] = (d_uptime >> 8*1)&(0xFF);
-            searchOutMsg->struct1.uptime[2] = (d_uptime >> 8*2)&(0xFF);
-            searchOutMsg->struct1.uptime[3] = (d_uptime >> 8*3)&(0xFF);
+            syslog(LOG_INFO, "Uptime output: %s", output);
+            uint32_t d_uptime = strtol(output, NULL, 10);
+            syslog(LOG_INFO, "Uptime : %d", d_uptime);
+            searchOutMsg->struct1.uptime[0] = (d_uptime) & (0xFF);
+            searchOutMsg->struct1.uptime[1] = (d_uptime >> 8 * 1) & (0xFF);
+            searchOutMsg->struct1.uptime[2] = (d_uptime >> 8 * 2) & (0xFF);
+            searchOutMsg->struct1.uptime[3] = (d_uptime >> 8 * 3) & (0xFF);
+            syslog(LOG_INFO, "struct1.uptime 1: %x", searchOutMsg->struct1.uptime[0]);
+            syslog(LOG_INFO, "struct1.uptime 2: %x", searchOutMsg->struct1.uptime[1]);
+            syslog(LOG_INFO, "struct1.uptime 3: %x", searchOutMsg->struct1.uptime[2]);
+            syslog(LOG_INFO, "struct1.uptime 4 %x", searchOutMsg->struct1.uptime[3]);
+        }
+        else {
+            syslog(LOG_ERR, "In system more than 1 Uptime - count: %d", lineCount);
         }
     }
     if(!uptimeFlag)
@@ -346,90 +345,55 @@ int getBoardInfo(search_out_msg_t *searchOutMsg)
     return 0;
 }
 
-int getUCInfo(search_out_msg_t *searchOutMsg)
+int getSystemInfo(search_out_msg_t *searchOutMsg)
 {
     char output[OUTPUT_MAX_LENGTH];
-    char description[]      = "description";
-    char location[]         = "location";
     uint8_t locationFlag    = 0;
     uint8_t descriptionFlag = 0;
-    splited_line_t splitLineUCI;
 
-    FILE *pipe = openPipe(CommandTable[CMD_UCI_SYS]);
+    FILE *pipe = openPipe(CommandTable[CMD_SYSTEM_INFO]);
+    uint8_t lineCount = 0;
+    openlog("dm_system", LOG_PID , LOG_USER);
     while (fgets(output, OUTPUT_MAX_LENGTH, pipe))
     {
-        if (strstr(output, location) != NULL)
-        {
+        lineCount++;
+        if (lineCount == 1) {
             locationFlag = 1;
-            split_line(output, delimEqual, &splitLineUCI);
-            splitLineUCI.tokens[1][strcspn(splitLineUCI.tokens[1], "\n")] = '\0';
-            removeCharacter(splitLineUCI.tokens[1],'\'');
+            removeCharacter(output,'\'');
             for (int i = 0; i< MAX_LENGTH; i++ )
             {
                 searchOutMsg->struct1.dev_loc[i] = '\0';
             }
-            strncpy(searchOutMsg->struct1.dev_loc, splitLineUCI.tokens[1], strlen(splitLineUCI.tokens[1]));
+            strncpy(searchOutMsg->struct1.dev_loc, output, strlen(output));
+            syslog(LOG_INFO, "Location: %s", searchOutMsg->struct1.dev_loc);
+            closelog();
         }
-        else if (strstr(output, description) != NULL)
-        {
+        else if (lineCount == 2) {
             descriptionFlag = 1;
-            split_line(output, delimEqual, &splitLineUCI);
-            splitLineUCI.tokens[1][strcspn(splitLineUCI.tokens[1], "\n")] = '\0';
-            removeCharacter(splitLineUCI.tokens[1],'\'');
+            removeCharacter(output,'\'');
             for (int i = 0; i< MAX_LENGTH; i++ )
             {
                 searchOutMsg->struct1.dev_descr[i] = '\0';
             }
-            strncpy(searchOutMsg->struct1.dev_descr, splitLineUCI.tokens[1],strlen(splitLineUCI.tokens[1]));
+            strncpy(searchOutMsg->struct1.dev_descr,output, strlen(output));
+            syslog(LOG_INFO, "Description: %s", searchOutMsg->struct1.dev_descr);
+        }
+        else if (lineCount > 2) {
+            syslog(LOG_INFO, "System Info more than 2 Line, count %d", lineCount);
         }
     }
+    closelog();
     if(!locationFlag)
     {
         openlog("dm_err", LOG_PID | LOG_PERROR, LOG_USER);
-        syslog(LOG_ERR, "Location not found");
+        syslog(LOG_ERR, "Error: Location not found");
         closelog();
     }
     if(!descriptionFlag)
     {
         openlog("dm_err", LOG_PID | LOG_PERROR, LOG_USER);
-        syslog(LOG_ERR, "Description not found");
+        syslog(LOG_ERR, "Error: Description not found");
         closelog();
-    }
-    closePipe(pipe);
-    return 0;
-}
-
-int getGateway(search_out_msg_t *searchOutMsg)
-{
-    char gateway[]      = "default";
-    uint8_t gatewayFlag = 0;
-    char output[OUTPUT_MAX_LENGTH];
-    splited_line_t splitLineGateway;
-    splited_line_t splitLineIP;
-    FILE *pipe = openPipe(CommandTable[CMD_GATE]);
-    while (fgets(output, OUTPUT_MAX_LENGTH, pipe))
-    {
-        if (strstr(output, gateway) != NULL)
-        {
-            gatewayFlag = 1;
-            split_line(output, delimSpace, &splitLineGateway);
-            split_line(splitLineGateway.tokens[2], delimDot, &splitLineIP);
-
-            for (int i = 0; i<IPV4_LEN; i++)
-            {
-                searchOutMsg->struct1.gate[i] = strtol(splitLineIP.tokens[i], NULL, 10);
-            }
-        }
-    }
-    if (!gatewayFlag)
-    {
-        openlog("dm_err", LOG_PID, LOG_USER);
-        syslog(LOG_ERR, "gateway not found");
-        closelog();
-        for (int i = 0; i<IPV4_LEN; i++)
-        {
-            searchOutMsg->struct1.gate[i] = 0xFF;
-        }
     }
     closePipe(pipe);
     return 0;
@@ -463,9 +427,16 @@ void closePipe(FILE *pipe)
     }
 }
 
-void getDeviceName (char *devName)
+void getDeviceName(char *devName)
 {
-    strncpy(devName, configParam.deviceName, strlen(configParam.deviceName));
+
+    strncpy(devName, configParam.mngtDevice, strlen(configParam.mngtDevice));
+}
+
+void getDeviceNameLen(uint8_t *devNameLen)
+{
+    *devNameLen = strlen(configParam.mngtDevice);
+    printf("dev name str = %d\n", *devNameLen);
 }
 
 
